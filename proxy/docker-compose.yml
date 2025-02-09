@@ -1,0 +1,17 @@
+services:
+  nginx-proxy:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    env_file:
+      - ../env/proxy.env
+    networks:
+      - home-network
+networks:
+  home-network:
+    external: true
