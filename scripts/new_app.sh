@@ -1,14 +1,30 @@
 #!/bin/bash
 
-source scripts/manage-network-functions.sh
-source scripts/appearance.sh
-source scripts/conf.sh
+############################################################################
+# Script para instalar um novo aplicativo na estrutura.
+#  - Solicita as informações básicas do projeto (nome,subdomínio, link do repositório)
+#  - Cria pasta do projeto em app
+#  - Clona o repositório dentro da pasta do app
+#  - Verifica se deseja instalar uma branch específica e faz a instalação se necessário.
+#  - Adiciona informações ao env do proxy.
+#  - Cria template do nginx para o projeto.
+#  - Verifica e cria se necessário a rede.
+#  - Sobe os containeres se for solicitado.
+#  - Reinicia o nginx e exibe informações finais.
+#
+# Autor: Claython Remboski
+############################################################################
+
+source scripts/utils/network_manager.sh
+source scripts/utils/colors.sh
+source scripts/utils/text.sh
+source scripts/conf_creator.sh
 
 set -e
 
 # Verificar se o arquivo .env existe
 if [ ! -f "env/proxy.env" ]; then
-    echo "${RED}Arquivo proxy.env não encontrado!${RESET}"
+    red "Arquivo proxy.env não encontrado!"
     exit 1
 fi
 
@@ -19,57 +35,57 @@ set +a
 
 separator
 # Coletar informações do novo projeto
-echo -e "${GREEN}Insira as informações do novo projeto:${RESET}"
+green "Insira as informações do novo projeto:"
 
-echo -e "${CYAN}Nome do projeto (minusculo): ${RESET}"
+blue "Nome do projeto (minusculo): "
 read -r project_name
 jumpline
 
-echo -e "${CYAN}Subdomínio (sem o domínio principal): ${RESET}"
+blue "Subdomínio (sem o domínio principal): "
 read -r subdomain
 jumpline
 
-echo -e "${CYAN}Link para git clone do rep: ${RESET}"
+blue "Link para git clone do rep: "
 read -r gitrepo
 jumpline
 separator
 
 #-----------------------------------------------------------------------------------
 # Criar diretório do projeto
-echo -e "${CYAN}Criando diretório do projeto... ${RESET}"
+blue "Criando diretório do projeto... "
 mkdir -p "app/$project_name"
 separator
 
 #-----------------------------------------------------------------------------------
 # Verificar se o repositório já foi clonado
 if [ -d "app/$project_name/.git" ]; then
-    echo -e "${YELLOW}O repositório já existe em app/$project_name. Clone ignorado.${RESET}"
+    yellow "O repositório já existe em app/$project_name. Clone ignorado."
 else
     # Solicitar opcionalmente a branch
-    echo -e "${CYAN}Deseja clonar uma branch específica? (deixe vazio para clonar o repositório completo): ${RESET}"
+    blue "Deseja clonar uma branch específica? (deixe vazio para clonar o repositório completo): "
     read -r branch_name
 
-    echo "Clonando repositório $gitrepo"
+    blue "Clonando repositório $gitrepo"
 
     # Montar comando de clone
     if [ -n "$branch_name" ]; then
-        echo -e "${CYAN}Clonando a branch ${branch_name}...${RESET}"
+        blue "Clonando a branch ${branch_name}..."
         git clone -b "$branch_name" --single-branch "$gitrepo" "app/$project_name"
     else
-        echo -e "${CYAN}Clonando o repositório completo...${RESET}"
+        blue "Clonando o repositório completo..."
         git clone "$gitrepo" "app/$project_name"
     fi
 
     # Verificar se o clone foi bem-sucedido
     if [ $? -ne 0 ]; then
-        echo -e "${RED}Falha ao clonar o repositório. Você precisará baixá-lo manualmente.${RESET}"
+        red "Falha ao clonar o repositório. Você precisará baixá-lo manualmente."
         exit 1
     fi
 fi
 
 #-----------------------------------------------------------------------------------
 
-echo -e "${GREEN}Atualizando variaveis de ambiente.${RESET}"
+green "Atualizando variaveis de ambiente."
 # Adicionar variáveis ao proxy.env
 echo "" >>env/proxy.env
 
@@ -94,27 +110,27 @@ separator
 #-----------------------------------------------------------------------------------
 # Criar template nginx
 
-echo -e "${GREEN}Criando template nginx... ${RESET}"
+green "Criando template nginx... "
 
 # Localizar arquivo .template no diretório do projeto e copiá-lo
 template_file=$(find app/${project_name} -maxdepth 1 -name "${project_name}.conf" -print -quit)
 
 if [ -n "$template_file" ]; then
     cp "$template_file" "proxy/nginx/conf.d/${project_name}.conf"
-    echo -e "${GREEN}Arquivo conf nginx copiado para proxy/nginx/conf.d/${project_name}.conf ${RESET}"
+    green "Arquivo conf nginx copiado para proxy/nginx/conf.d/${project_name}.conf "
 else
-    echo -e "${RED}Nenhum arquivo .nginx encontrado em app/${project_name}${RESET}"
+    red "Nenhum arquivo .nginx encontrado em app/${project_name}"
     jumpline
-    echo -e "${YELLOW}Criando arquivo padrão ${RESET}"
+    yellow "Criando arquivo padrão "
     create_nginx_conf_file "$subdomain.$DOMAIN" "$project_name"
-    echo -e "${GREEN}Arquivo conf nginx criado, verificar se é preciso editar. ${RESET}"
+    green "Arquivo conf nginx criado, verificar se é preciso editar. "
 
 fi
 separator
 
 #-----------------------------------------------------------------------------------
 # Verificar se a rede já está listada no DOCKER_NETWORKS e no env
-echo -e "${GREEN}Verificando rede para o app ${project_name} ${RESET}"
+green "Verificando rede para o app ${project_name} "
 
 network_name="${project_name}-network"
 
@@ -125,8 +141,8 @@ create_network_if_not_exists "$network_name"
 
 #-----------------------------------------------------------------------------------
 # Subir os containeres
-echo -e "${GREEN}Deseja já criar os containeres do projeto?(s/n) ${RESET}"
-echo -e "${YELLOW}será executado o comando docker compose up -d --build ${RESET}"
+green "Deseja já criar os containeres do projeto?(s/n) "
+yellow "será executado o comando docker compose up -d --build "
 
 read -r confirmation
 
@@ -137,11 +153,11 @@ fi
 
 #-----------------------------------------------------------------------------------
 # Reiniciar nginx
-echo -e "${GREEN}Reiniciando nginx... ${RESET}"
+green "Reiniciando nginx... "
 docker exec nginx-proxy nginx -s reload
 separator
-echo -e "Projeto $project_name criado com sucesso!"
+green "Projeto $project_name criado com sucesso!"
 echo -e "Não esqueça de:"
-echo -e "${GREEN}1. Configurar o DNS para $subdomain.$DOMAIN ${RESET}"
-echo -e "${GREEN}2. Adicionar a rede $network_name ao seu docker-compose.yml ${RESET}"
-echo -e "${GREEN}3. Configurar seu projeto em app/$project_name ${RESET}"
+green "1. Configurar o DNS para $subdomain.$DOMAIN "
+green "2. Adicionar a rede $network_name ao seu docker-compose.yml "
+green "3. Configurar seu projeto em app/$project_name "
