@@ -157,7 +157,5 @@ green "Reiniciando nginx... "
 docker exec nginx-proxy nginx -s reload
 separator
 green "Projeto $project_name criado com sucesso!"
-echo -e "Não esqueça de:"
-green "1. Configurar o DNS para $subdomain.$DOMAIN "
-green "2. Adicionar a rede $network_name ao seu docker-compose.yml "
-green "3. Configurar seu projeto em app/$project_name "
+
+green "Não esqueça de configurar o DNS para $subdomain.$DOMAIN "
