@@ -53,7 +53,14 @@ source "$bashrc_file" && echo "Função '$alias_name' pronta para uso."
 
 ### 1.2 - Para ambiente de produção:
 
-
+- Após baixar o repositório, é necessário iniciar o proxy reverso. Execute o script `start_proxy`. Não esqueça de adicionar o subdomínio ao provedor DNS.
+- Por padrão, o repositório iniciará com o app `home`. Tanto o domínio principal quanto o subdomínio home direcionarão para esse app.
+- Requisitos para instalar um novo aplicativo:
+  - Um docker-compose.yml na pasta raiz do aplicativo. Que deve conter os services e rede utilizados.
+  - Um template nginx também na raiz do projeto com a nomenclatura: `app_name.conf`. Exemplo: o app home que vem por padrão no projeto, deveria possuir um arquivo chamado home.conf em sua pasta raiz. Como o projeto já se inicia com ele por padrão, nosso arquivo já está na poasta proxy/nginx/conf.d, local onde estarão todos os arquivos de nginx dos apps instalados.
+  - Estar hospedado em um repositório git, que possa ser baixado usando o comando git clone.
+- Para iniciar a instalação de um novo app:
+  - Execute o comando `new_app`. Será solicitado o nome do app. Este nome será usado para criar a pasta do aplicativo dentro da pasta app. Será através dele também que serão definidos: subdomínio, nome da rede, nome do template nginx.
 
 
 
